@@ -1,6 +1,6 @@
 "use client";
 
-import { Grid, OrbitControls, SoftShadows } from "@react-three/drei";
+import { Grid, OrbitControls } from "@react-three/drei";
 import type { ThreeEvent } from "@react-three/fiber";
 import * as THREE from "three";
 import { useMemo } from "react";
@@ -60,7 +60,7 @@ export function Scene({ snapEnabled, activeTool, shapes, onPlace }: SceneProps) 
         shadow-camera-top={20}
         shadow-camera-bottom={-20}
       />
-      <SoftShadows size={12} samples={12} focus={0.6} />
+      {/* drei SoftShadows injects GLSL that assumes packed RGBA shadows; current Three uses depth textures → shader errors. */}
 
       <Grid
         infiniteGrid
