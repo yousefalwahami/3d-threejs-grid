@@ -1,6 +1,6 @@
 "use client";
 
-import { Grid, OrbitControls } from "@react-three/drei";
+import { OrbitControls } from "@react-three/drei";
 import type { ThreeEvent } from "@react-three/fiber";
 import * as THREE from "three";
 import { useMemo, useRef } from "react";
@@ -18,8 +18,9 @@ type SceneProps = {
 };
 
 /**
- * Lights, shadows, infinite grid (shader plane from drei), and click-to-place on the grid plane.
- * Orbit controls share the same pointer layer; `stopPropagation` on meshes avoids accidental placement through them.
+ * Lights, shadows, XZ grid, and click-to-place. Uses THREE.GridHelper so line positions match
+ * world integer coordinates; drei's shader Grid + infiniteGrid stretches vertices so visuals
+ * no longer matched raycast hits / snapping.
  */
 export function Scene({ snapEnabled, activeTool, shapes, onPlace, onMoveShape }: SceneProps) {
   const skipNextGridClick = useRef(false);
@@ -28,6 +29,12 @@ export function Scene({ snapEnabled, activeTool, shapes, onPlace, onMoveShape }:
       skipNextGridClick.current = false;
     }, 400);
   };
+
+  const gridHelper = useMemo(() => {
+    const g = new THREE.GridHelper(200, 200, "#3b82f6", "#64748b");
+    g.position.y = 0.001;
+    return g;
+  }, []);
 
   // `onClick` avoids fighting OrbitControls: drags rotate the camera, short clicks still place.
   const handleGridClick = (e: ThreeEvent<MouseEvent>) => {
@@ -44,8 +51,6 @@ export function Scene({ snapEnabled, activeTool, shapes, onPlace, onMoveShape }:
     onPlace(activeTool, [x, y, z]);
   };
 
-  const gridArgs = useMemo(() => [30, 30] as [number, number], []);
-
   return (
     <>
       <color attach="background" args={["#0c0c0f"]} />
@@ -61,23 +66,14 @@ export function Scene({ snapEnabled, activeTool, shapes, onPlace, onMoveShape }:
         shadow-camera-top={20}
         shadow-camera-bottom={-20}
       />
-      {/* drei SoftShadows injects GLSL that assumes packed RGBA shadows; current Three uses depth textures → shader errors. */}
 
-      <Grid
-        infiniteGrid
-        fadeDistance={55}
-        fadeStrength={1.2}
-        cellSize={1}
-        sectionSize={5}
-        sectionColor="#3b82f6"
-        cellColor="#64748b"
-        sectionThickness={1.1}
-        cellThickness={0.6}
-        position={[0, 0, 0]}
-        args={gridArgs}
-        side={THREE.DoubleSide}
-        onClick={handleGridClick}
-      />
+      <primitive object={gridHelper} />
+
+      {/* Full picking surface at y=0; R3F uses canvas-relative coords (offsetX/Y). GridHelper is lines-only. */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} onClick={handleGridClick}>
+        <planeGeometry args={[400, 400]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} toneMapped={false} />
+      </mesh>
 
       {shapes.map((s) => (
         <PlacedShapeMesh

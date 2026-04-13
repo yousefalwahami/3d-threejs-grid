@@ -4,6 +4,7 @@ import type { ThreeEvent } from "@react-three/fiber";
 import { useThree } from "@react-three/fiber";
 import { useCallback, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
+import { clientXYToNdc } from "@/lib/pointerNdc";
 import { snapScalar } from "@/lib/snap";
 
 const DRAG_THRESHOLD_PX = 5;
@@ -27,7 +28,7 @@ export function useDragOnXZPlane({
   onDragStart,
   onDragEnd,
 }: UseDragOnXZPlaneOptions) {
-  const { camera, size, gl } = useThree();
+  const { camera, gl } = useThree();
   const controls = useThree((s) => s.controls as { enabled?: boolean } | undefined);
 
   const plane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), []);
@@ -42,15 +43,15 @@ export function useDragOnXZPlane({
 
   const applyMove = useCallback(
     (clientX: number, clientY: number) => {
-      ndc.x = (clientX / size.width) * 2 - 1;
-      ndc.y = -(clientY / size.height) * 2 + 1;
+      const rect = gl.domElement.getBoundingClientRect();
+      clientXYToNdc(clientX, clientY, rect, ndc);
       raycaster.setFromCamera(ndc, camera);
       if (!raycaster.ray.intersectPlane(plane, hit)) return;
       const x = snapScalar(hit.x, snapEnabled);
       const z = snapScalar(hit.z, snapEnabled);
       onDragToRef.current(x, z);
     },
-    [camera, hit, ndc, plane, raycaster, size.height, size.width, snapEnabled],
+    [camera, gl.domElement, hit, ndc, plane, raycaster, snapEnabled],
   );
 
   const handlePointerDown = useCallback(
