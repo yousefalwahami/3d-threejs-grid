@@ -28,7 +28,8 @@ export function Toolbox({
       <div>
         <h1 className="text-lg font-semibold tracking-tight">Shape toolbox</h1>
         <p className="mt-1 text-sm text-zinc-400">
-          Pick a shape, then click the grid to place. Drag with the mouse to orbit; scroll to zoom.
+          Pick a shape, then click the grid to place. Drag a placed shape to move it (respects snap).
+          Drag the background to orbit; scroll to zoom.
         </p>
       </div>
 

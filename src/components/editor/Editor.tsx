@@ -15,6 +15,10 @@ export function Editor() {
     setShapes((prev) => [...prev, { id: crypto.randomUUID(), kind, position }]);
   }, []);
 
+  const handleMoveShape = useCallback((id: string, position: [number, number, number]) => {
+    setShapes((prev) => prev.map((s) => (s.id === id ? { ...s, position } : s)));
+  }, []);
+
   const handleClear = useCallback(() => setShapes([]), []);
 
   return (
@@ -38,6 +42,7 @@ export function Editor() {
               activeTool={activeTool}
               shapes={shapes}
               onPlace={handlePlace}
+              onMoveShape={handleMoveShape}
             />
           </Suspense>
         </Canvas>

@@ -3,8 +3,8 @@
 import { Grid, OrbitControls } from "@react-three/drei";
 import type { ThreeEvent } from "@react-three/fiber";
 import * as THREE from "three";
-import { useMemo } from "react";
-import { SHAPE_LAYOUT } from "@/constants/scene";
+import { useMemo, useRef } from "react";
+import { shapeCenterY } from "@/constants/scene";
 import { snapScalar } from "@/lib/snap";
 import type { PlacedShape, ShapeKind } from "@/types/shapes";
 import { PlacedShapeMesh } from "./PlacedShapeMesh";
@@ -14,32 +14,33 @@ type SceneProps = {
   activeTool: ShapeKind | null;
   shapes: PlacedShape[];
   onPlace: (kind: ShapeKind, position: [number, number, number]) => void;
+  onMoveShape: (id: string, position: [number, number, number]) => void;
 };
-
-function centerYForKind(kind: ShapeKind): number {
-  switch (kind) {
-    case "circle":
-      return SHAPE_LAYOUT.circle.centerY;
-    case "cube":
-      return SHAPE_LAYOUT.cube.centerY;
-    case "rectangle":
-      return SHAPE_LAYOUT.rectangle.centerY;
-  }
-}
 
 /**
  * Lights, shadows, infinite grid (shader plane from drei), and click-to-place on the grid plane.
  * Orbit controls share the same pointer layer; `stopPropagation` on meshes avoids accidental placement through them.
  */
-export function Scene({ snapEnabled, activeTool, shapes, onPlace }: SceneProps) {
+export function Scene({ snapEnabled, activeTool, shapes, onPlace, onMoveShape }: SceneProps) {
+  const skipNextGridClick = useRef(false);
+  const scheduleSkipReset = () => {
+    window.setTimeout(() => {
+      skipNextGridClick.current = false;
+    }, 400);
+  };
+
   // `onClick` avoids fighting OrbitControls: drags rotate the camera, short clicks still place.
   const handleGridClick = (e: ThreeEvent<MouseEvent>) => {
+    if (skipNextGridClick.current) {
+      skipNextGridClick.current = false;
+      return;
+    }
     if (!activeTool) return;
     e.stopPropagation();
     const p = e.point;
     const x = snapScalar(p.x, snapEnabled);
     const z = snapScalar(p.z, snapEnabled);
-    const y = centerYForKind(activeTool);
+    const y = shapeCenterY(activeTool);
     onPlace(activeTool, [x, y, z]);
   };
 
@@ -79,7 +80,18 @@ export function Scene({ snapEnabled, activeTool, shapes, onPlace }: SceneProps) 
       />
 
       {shapes.map((s) => (
-        <PlacedShapeMesh key={s.id} kind={s.kind} position={s.position} />
+        <PlacedShapeMesh
+          key={s.id}
+          id={s.id}
+          kind={s.kind}
+          position={s.position}
+          snapEnabled={snapEnabled}
+          onMove={onMoveShape}
+          onDragEnd={() => {
+            skipNextGridClick.current = true;
+            scheduleSkipReset();
+          }}
+        />
       ))}
 
       <OrbitControls
